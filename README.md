@@ -1,4 +1,4 @@
 # Steward
 
-Docker images for build environments
+Useful Docker images.
 

@@ -1,0 +1,14 @@
+#!/usr/bin/env python
+from glob import glob
+import os
+
+scripts_dir = os.path.dirname(os.path.realpath(__file__))
+steward_dir = os.path.dirname(scripts_dir)
+
+dockerfiles = glob(steward_dir + "/*/*/Dockerfile")
+
+if __name__ == '__main__':
+    for dockerfile in dockerfiles:
+        parts = dockerfile.split(os.sep)
+        repo = "/".join(parts[-3:-1])
+        print("{} {}".format(dockerfile, repo))

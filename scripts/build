@@ -1,0 +1,54 @@
+#!/usr/bin/env python
+from glob import glob
+from subprocess import call
+
+import os
+import argparse
+
+scripts_dir = os.path.dirname(os.path.realpath(__file__))
+steward_dir = os.path.dirname(scripts_dir)
+
+parser = argparse.ArgumentParser(description='Build Steward Images')
+parser.add_argument('-r', '--registry', type=str, default='skip', help='Docker Registry')
+parser.add_argument('-s', '--short-tag', dest='short_tag', action='store_true', help='Short Tag Format')
+parser.add_argument('-p', '--push', dest='push', action='store_true', help='Push to Docker Registry')
+args = parser.parse_args()
+registry = args.registry
+
+dockerfiles = glob(steward_dir + "/*/*/Dockerfile")
+builds = {}
+for dockerfile in dockerfiles:
+    parts = dockerfile.split(os.sep)
+    repo = "/".join(parts[-3:-1])
+    short_tag = "-".join(parts[-3:-1])
+    build = builds[repo] = {
+        "dockerfile": dockerfile,
+        "path": os.path.dirname(dockerfile)
+    }
+
+    tag_end = (short_tag if args.short_tag else repo) + ":latest"
+    if registry is not "skip":
+        build["tag"] = "{}/{}".format(registry, tag_end)
+    else:
+        build["tag"] = tag_end
+
+for repo in builds:
+    build = builds[repo]
+    dockerfile = build["dockerfile"]
+    path = build["path"]
+    tag = build["tag"]
+    ret = call(["docker", "build", "--rm", "-f", dockerfile, "-t", tag, path])
+    if ret is not 0:
+        print("[WARN] {} failed to build".format(repo))
+        build["push"] = False
+    else:
+        build["push"] = True
+
+if args.push:
+    for repo in builds:
+        build = builds[repo]
+        if build["push"]:
+            tag = build["tag"]
+            ret = call(["docker", "push", tag])
+            if ret is not 0:
+                print("[WARN] {} failed to push".format(repo))
